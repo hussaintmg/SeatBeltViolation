@@ -675,25 +675,6 @@ def process_video(video_path, output_path, line_ratio, skip_frames,
     cap.release()
     out.release()
 
-    # Transcode to H264 for browser compatibility
-    status_text.info("⚙️ Finalizing video encoding for browser...")
-    encoding_success = True
-    h264_path = output_path.replace(".mp4", "_h264.mp4")
-    try:
-        # Use ffmpeg to convert to H264 which browsers can play
-        cmd = [
-            'ffmpeg', '-y', '-i', output_path,
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28',
-            '-pix_fmt', 'yuv420p', h264_path
-        ]
-        res = subprocess.run(cmd, check=True, capture_output=True)
-        # Replace original with transcoded
-        if os.path.exists(h264_path):
-            os.replace(h264_path, output_path)
-    except Exception as e:
-        encoding_success = False
-        st.warning(f"⚠️ Browser-compatible encoding failed. You can still download the video.")
-
     df = tracker.get_dataframe()
     # Filter: Only keep vehicles that crossed the line
     df = df[df['crossed_line'] == True]
@@ -716,7 +697,7 @@ def process_video(video_path, output_path, line_ratio, skip_frames,
         }
         save_session_data(session_doc)
 
-    return df, motion_info, encoding_success
+    return df, motion_info
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  UI LAYOUT
@@ -793,7 +774,7 @@ with tab_process:
             # Using global mongo_col initialized at top level
 
             start_time = time.time()
-            df, motion_info, encoding_success = process_video(
+            df, motion_info = process_video(
                 video_tmp, out_path, line_ratio, skip_frames,
                 vehicle_model, licence_plate_model, seatbelt_model, ocr_reader,
                 progress_bar, status_text, live_placeholder, det_placeholder)
@@ -831,28 +812,16 @@ with tab_process:
                         unsafe_allow_html=True)
 
                 # Results section
-                if encoding_success:
-                    vid_col, dl_col = st.columns([3, 1])
-                    with vid_col:
-                        with open(out_path, 'rb') as f:
-                            video_bytes = f.read()
-                        st.video(video_bytes)
-                    with dl_col:
-                        st.markdown("<br><br>", unsafe_allow_html=True)
-                        st.download_button(
-                            label="⬇ Download Video",
-                            data=video_bytes,
-                            file_name=f"tracked_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
-                            mime="video/mp4")
-                else:
-                    with open(out_path, 'rb') as f:
-                        video_bytes = f.read()
-                    st.error("🎬 Browser playback is not supported for this output. Please download the file to view the results.")
-                    st.download_button(
-                        label="⬇ Download Processed Video",
-                        data=video_bytes,
-                        file_name=f"processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
-                        mime="video/mp4")
+                with open(out_path, 'rb') as f:
+                    video_bytes = f.read()
+                
+                st.success("✅ Video processing complete!")
+                st.download_button(
+                    label="⬇ Download Processed Video",
+                    data=video_bytes,
+                    file_name=f"processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
+                    mime="video/mp4",
+                    use_container_width=True)
 
                 # Data table
                 st.markdown('<div class="section-header">🗃️ Detection Data</div>', unsafe_allow_html=True)
