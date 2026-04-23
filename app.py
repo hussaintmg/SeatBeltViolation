@@ -676,8 +676,7 @@ def process_video(video_path, output_path, line_ratio, skip_frames,
     out.release()
 
     df = tracker.get_dataframe()
-    # Filter: Only keep vehicles that crossed the line
-    df = df[df['crossed_line'] == True]
+    # No longer filtering by crossed_line - saving all detected vehicles
 
     if not df.empty:
         v_ids = []
@@ -692,7 +691,8 @@ def process_video(video_path, output_path, line_ratio, skip_frames,
             "session_id": session_id,
             "start_time": datetime.utcnow(),
             "video_name": Path(video_path).name,
-            "total_violations": len(df),
+            "total_vehicles": len(df),
+            "total_violations": len(df[df['crossed_line'] == True]),
             "vehicle_ids": v_ids
         }
         save_session_data(session_doc)
@@ -795,10 +795,10 @@ with tab_process:
 
                 st.markdown(f"""
                 <div class="metric-row">
-                    <div class="metric-card accent"><div class="metric-label">Total Vehicles</div><div class="metric-value">{total_v}</div></div>
+                    <div class="metric-card accent"><div class="metric-label">Total Tracked</div><div class="metric-value">{total_v}</div></div>
                     <div class="metric-card green"><div class="metric-label">Belt ON</div><div class="metric-value">{belt_on}</div></div>
                     <div class="metric-card red"><div class="metric-label">Belt OFF</div><div class="metric-value">{belt_off}</div></div>
-                    <div class="metric-card amber"><div class="metric-label">Crossed Line</div><div class="metric-value">{crossed}</div></div>
+                    <div class="metric-card amber"><div class="metric-label">Line Crossed</div><div class="metric-value">{crossed}</div></div>
                 </div>
                 """, unsafe_allow_html=True)
 
