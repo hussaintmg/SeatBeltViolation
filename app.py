@@ -834,7 +834,11 @@ with tab_process:
                         return 'color: #ff3b5c; font-weight: 700;'
                     return 'color: #ffb300;'
 
-                styled_df = df.style.applymap(style_seatbelt, subset=['seatbelt'])
+                # In Pandas 2.0+, Styler.applymap was renamed to Styler.map
+                try:
+                    styled_df = df.style.map(style_seatbelt, subset=['seatbelt'])
+                except AttributeError:
+                    styled_df = df.style.applymap(style_seatbelt, subset=['seatbelt'])
                 st.dataframe(styled_df, width="stretch", height=800)
 
                 # CSV download
