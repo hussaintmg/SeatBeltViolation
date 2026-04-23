@@ -458,7 +458,7 @@ class VehicleTracker:
             self.all_records.append({
                 'vehicle_id'   : veh.vehicle_id,
                 'license_plate': veh.license_plate or 'NOT DETECTED',
-                'seatbelt'     : 'YES' if veh.seatbelt_on else ('NO' if veh.seatbelt_on is False else 'NOT CHECKED'),
+                'seatbelt'     : 'YES' if veh.seatbelt_on else ('NO' if veh.seatbelt_on is False else 'NOT DETECTED'),
                 'first_frame'  : veh.first_seen,
                 'last_frame'   : veh.last_seen,
                 'crossed_line' : veh.crossed_line,
@@ -472,7 +472,7 @@ class VehicleTracker:
             current.append({
                 'vehicle_id'   : veh.vehicle_id,
                 'license_plate': veh.license_plate or 'NOT DETECTED',
-                'seatbelt'     : 'YES' if veh.seatbelt_on else ('NO' if veh.seatbelt_on is False else 'NOT CHECKED'),
+                'seatbelt'     : 'YES' if veh.seatbelt_on else ('NO' if veh.seatbelt_on is False else 'NOT DETECTED'),
                 'first_frame'  : veh.first_seen,
                 'last_frame'   : veh.last_seen,
                 'crossed_line' : veh.crossed_line,
@@ -515,8 +515,8 @@ def check_seatbelt(vehicle_crop, seatbelt_model):
         cls_id = int(box.cls[0])
         cls_name = seatbelt_model.names[cls_id].lower()
         if float(box.conf[0]) > 0.4:
-            if 'belt' in cls_name or 'with' in cls_name: return True
-            if 'no' in cls_name or 'without' in cls_name: return False
+            if cls_name == 'person_with_seatbelt': return True
+            if cls_name == 'person_without_seatbelt': return False
     return None
 
 def detect_license_plate_in_crop(vehicle_crop, licence_plate_model, ocr_reader):
@@ -915,7 +915,7 @@ with tab_process:
                         import plotly.express as px
                         sb_counts = df['seatbelt'].value_counts().reset_index()
                         sb_counts.columns = ['Status', 'Count']
-                        color_map = {'YES': '#00ff88', 'NO': '#ff3b5c', 'NOT CHECKED': '#ffb300'}
+                        color_map = {'YES': '#00ff88', 'NO': '#ff3b5c', 'NOT DETECTED': '#ffb300'}
                         fig = px.pie(sb_counts, names='Status', values='Count',
                                      title='Seatbelt Compliance',
                                      color='Status', color_discrete_map=color_map,
