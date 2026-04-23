@@ -812,16 +812,22 @@ with tab_process:
                         unsafe_allow_html=True)
 
                 # Results section
-                with open(out_path, 'rb') as f:
-                    video_bytes = f.read()
-                
-                st.success("✅ Video processing complete!")
-                st.download_button(
-                    label="⬇ Download Processed Video",
-                    data=video_bytes,
-                    file_name=f"processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
-                    mime="video/mp4",
-                    use_container_width=True)
+                try:
+                    if os.path.exists(out_path):
+                        with open(out_path, 'rb') as f:
+                            video_bytes = f.read()
+                        
+                        st.success("✅ Video processing complete!")
+                        st.download_button(
+                            label="⬇ Download Processed Video",
+                            data=video_bytes,
+                            file_name=f"processed_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4",
+                            mime="video/mp4",
+                            use_container_width=True)
+                    else:
+                        st.error("⚠️ Processed video file not found. Please try re-processing.")
+                except Exception as e:
+                    st.error(f"❌ Error preparing download: {e}")
 
                 # Data table
                 st.markdown('<div class="section-header">🗃️ Detection Data</div>', unsafe_allow_html=True)
@@ -842,23 +848,27 @@ with tab_process:
                 st.dataframe(styled_df, width="stretch", height=800)
 
                 # CSV download
-                csv_data = df.to_csv(index=False).encode()
-                dl1, dl2 = st.columns(2)
-                with dl1:
-                    st.download_button(
-                        "⬇ Download CSV",
-                        data=csv_data,
-                        file_name=f"vehicle_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        width="stretch")
-                with dl2:
+                try:
+                    csv_data = df.to_csv(index=False).encode()
                     json_data = df.to_json(orient='records', indent=2).encode()
-                    st.download_button(
-                        "⬇ Download JSON",
-                        data=json_data,
-                        file_name=f"vehicle_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                        mime="application/json",
-                        width="stretch")
+                    
+                    dl1, dl2 = st.columns(2)
+                    with dl1:
+                        st.download_button(
+                            "⬇ Download CSV",
+                            data=csv_data,
+                            file_name=f"vehicle_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            use_container_width=True)
+                    with dl2:
+                        st.download_button(
+                            "⬇ Download JSON",
+                            data=json_data,
+                            file_name=f"vehicle_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            mime="application/json",
+                            use_container_width=True)
+                except Exception as e:
+                    st.error(f"⚠️ Error preparing data downloads: {e}")
 
                 # Charts
                 st.markdown('<div class="section-header">📈 Analytics</div>', unsafe_allow_html=True)
