@@ -511,12 +511,24 @@ def check_seatbelt(vehicle_crop, seatbelt_model):
     if vehicle_crop.size == 0: return None
     results = seatbelt_model(vehicle_crop, verbose=False)
     if not results or len(results[0].boxes) == 0: return None
+    
+    found_with = False
+    found_without = False
+    
     for box in results[0].boxes:
         cls_id = int(box.cls[0])
-        cls_name = seatbelt_model.names[cls_id].lower()
+        cls_name = seatbelt_model.names.get(cls_id, "").lower()
         if float(box.conf[0]) > 0.4:
-            if cls_name == 'person_with_seatbelt': return True
-            if cls_name == 'person_without_seatbelt': return False
+            if cls_name == 'person_with_seatbelt':
+                found_with = True
+            elif cls_name == 'person_without_seatbelt':
+                found_without = True
+                
+    if found_without:
+        return False
+    elif found_with:
+        return True
+        
     return None
 
 def detect_license_plate_in_crop(vehicle_crop, licence_plate_model, ocr_reader):
@@ -650,8 +662,10 @@ def process_video(video_path, output_path, line_ratio, skip_frames,
                             veh.license_plate = p_text
                             veh.current_plate_bbox = p_bbox
                     
-                    if veh.seatbelt_on is None:
-                        veh.seatbelt_on = check_seatbelt(v_crop, seatbelt_model)
+                    if veh.seatbelt_on is not False:
+                        new_sb = check_seatbelt(v_crop, seatbelt_model)
+                        if new_sb is not None:
+                            veh.seatbelt_on = new_sb
                 except: pass
 
             if crosses_line(veh.center, line_info):
