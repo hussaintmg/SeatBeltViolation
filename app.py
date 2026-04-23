@@ -251,8 +251,23 @@ def save_session_data(session_doc):
 def save_vehicle_data(vehicle_doc):
     _, v_col = get_collections()
     if v_col is not None:
-        try: v_col.insert_one(vehicle_doc)
-        except: pass
+        try:
+            plate = vehicle_doc.get('license_plate')
+            # If we have a valid plate, use it as the unique key for upsert
+            if plate and plate != 'NOT DETECTED':
+                query = {"license_plate": plate}
+                # Update with latest info, but keep original session if needed
+                update = {"$set": vehicle_doc}
+                v_col.update_one(query, update, upsert=True)
+            else:
+                # Fallback to session+id to avoid duplicates in same session
+                query = {
+                    "session_id": vehicle_doc.get("session_id"),
+                    "vehicle_id": vehicle_doc.get("vehicle_id")
+                }
+                v_col.update_one(query, {"$set": vehicle_doc}, upsert=True)
+        except:
+            pass
 
 def fetch_sessions_data():
     s_col, _ = get_collections()
