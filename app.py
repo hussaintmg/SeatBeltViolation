@@ -234,45 +234,56 @@ def get_mongo():
     except Exception:
         return None, None
 
-# Initialize collections
-sessions_col, vehicles_col = get_mongo()
-
-if sessions_col is None:
-    st.sidebar.error("🚨 MongoDB Not Connected")
+# Initialize collections lazily
+sessions_col, vehicles_col = None, None
+def get_collections():
+    global sessions_col, vehicles_col
+    if sessions_col is None:
+        sessions_col, vehicles_col = get_mongo()
+    return sessions_col, vehicles_col
 
 def save_session_data(session_doc):
-    if sessions_col is not None:
-        try: sessions_col.insert_one(session_doc)
+    s_col, _ = get_collections()
+    if s_col is not None:
+        try: s_col.insert_one(session_doc)
         except: pass
 
 def save_vehicle_data(vehicle_doc):
-    if vehicles_col is not None:
-        try: vehicles_col.insert_one(vehicle_doc)
+    _, v_col = get_collections()
+    if v_col is not None:
+        try: v_col.insert_one(vehicle_doc)
         except: pass
 
 def fetch_sessions_data():
-    if sessions_col is None: return []
-    try: return list(sessions_col.find().sort("start_time", -1))
+    s_col, _ = get_collections()
+    if s_col is None: return []
+    try: return list(s_col.find().sort("start_time", -1))
     except: return []
 
 def fetch_vehicles_for_session(v_ids):
-    if vehicles_col is None: return []
-    try: return list(vehicles_col.find({"vehicle_id": {"$in": v_ids}}))
+    _, v_col = get_collections()
+    if v_col is None: return []
+    try: return list(v_col.find({"vehicle_id": {"$in": v_ids}}))
     except: return []
 
 # ─── Model Loading ─────────────────────────────────────────────────────────────
 @st.cache_resource
-def load_models():
+def load_yolo_models():
     from ultralytics import YOLO
+    v_model = YOLO('models/vehicle-detection.pt')
+    p_model = YOLO('models/license_plate.pt')
+    s_model = YOLO('models/seatbelt_detection.pt')
+    return v_model, p_model, s_model
+
+@st.cache_resource
+def load_ocr_reader():
     import easyocr
-    
-    vehicle_model       = YOLO('models/vehicle-detection.pt')
-    licence_plate_model = YOLO('models/license_plate.pt')
-    seatbelt_model      = YOLO('models/seatbelt_detection.pt')
-    
-    # Initialize EasyOCR with a custom model directory if possible, or just default
-    ocr_reader          = easyocr.Reader(['en'], gpu=torch.cuda.is_available())
-    return vehicle_model, licence_plate_model, seatbelt_model, ocr_reader
+    return easyocr.Reader(['en'], gpu=torch.cuda.is_available())
+
+def load_models():
+    v, p, s = load_yolo_models()
+    ocr = load_ocr_reader()
+    return v, p, s, ocr
 
 # ─── Motion Analysis ───────────────────────────────────────────────────────────
 def analyze_video_motion(video_path, sample_frames=20):
