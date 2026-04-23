@@ -275,10 +275,10 @@ def fetch_sessions_data():
     try: return list(s_col.find().sort("start_time", -1))
     except: return []
 
-def fetch_vehicles_for_session(v_ids):
+def fetch_vehicles_for_session(session_id):
     _, v_col = get_collections()
     if v_col is None: return []
-    try: return list(v_col.find({"vehicle_id": {"$in": v_ids}}))
+    try: return list(v_col.find({"session_id": session_id}))
     except: return []
 
 # ─── Model Loading ─────────────────────────────────────────────────────────────
@@ -702,7 +702,17 @@ def process_video(video_path, output_path, line_ratio, skip_frames,
     out.release()
 
     df = tracker.get_dataframe()
-    # No longer filtering by crossed_line - saving all detected vehicles
+    # Deduplicate by license plate if valid, keeping the last occurrence
+    if not df.empty and 'license_plate' in df.columns:
+        # Separate 'NOT DETECTED' vs valid plates
+        df_valid = df[df['license_plate'] != 'NOT DETECTED']
+        df_invalid = df[df['license_plate'] == 'NOT DETECTED']
+        
+        if not df_valid.empty:
+            # Group by plate and take the last record (most recent)
+            df_valid = df_valid.drop_duplicates(subset=['license_plate'], keep='last')
+            
+        df = pd.concat([df_valid, df_invalid]).sort_values(by='last_frame').reset_index(drop=True)
 
     if not df.empty:
         v_ids = []
@@ -973,9 +983,8 @@ with tab_history:
             st.markdown("---")
             st.markdown(f"### 🚗 Vehicles in Session: `{selected_sid}`")
 
-            # Fetch vehicles from this session's list
-            v_ids = sess_meta.get('vehicle_ids', [])
-            vehicles = fetch_vehicles_for_session(v_ids)
+            # Fetch vehicles specific to this session
+            vehicles = fetch_vehicles_for_session(selected_sid)
             
             if vehicles:
                 det_df = pd.DataFrame(vehicles)
