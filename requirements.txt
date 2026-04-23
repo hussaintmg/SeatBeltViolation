@@ -1,0 +1,17 @@
+streamlit
+numpy
+ultralytics
+easyocr
+pymongo
+Pillow
+torch
+torchvision
+pandas
+scipy
+matplotlib
+pyyaml
+requests
+python-dateutil
+plotly
+dnspython
+opencv-python-headless
